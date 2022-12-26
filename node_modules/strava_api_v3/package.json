@@ -1,0 +1,22 @@
+{
+  "name": "strava_api_v3",
+  "version": "3.0.0",
+  "description": "The__Swagger_Playground_httpsdevelopers_strava_complayground_is_the_easiest_way_to_familiarize_yourself_with_the_Strava_API_by_submitting_HTTP_requests_and_observing_the_responses_before_you_write_any_client_code__It_will_show_what_a_response_will_look_like_with_different_endpoints_depending_on_the_authorization_scope_you_receive_from_your_athletes__To_use_the_Playground_go_to_httpswww_strava_comsettingsapi_and_change_your_Authorization_Callback_Domain_to_developers_strava_com__Please_note_we_only_support_Swagger_2_0__There_is_a_known_issue_where_you_can_only_select_one_scope_at_a_time__For_more_information_please_check_the_section_client_code_at_httpsdevelopers_strava_comdocs_",
+  "license": "Unlicense",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "mocha --recursive"
+  },
+  "browser": {
+    "fs": false
+  },
+  "dependencies": {
+    "superagent": "3.7.0",
+    "querystring": "0.2.0"
+  },
+  "devDependencies": {
+    "mocha": "~2.3.4",
+    "sinon": "1.17.3",
+    "expect.js": "~0.3.1"
+  }
+}
