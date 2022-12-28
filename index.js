@@ -1,9 +1,19 @@
+const axios = require('axios');
+
+// Imports dependencies and sets up http server
+const
+  express = require('express'),
+  bodyParser = require('body-parser'),
+// creates express http server
+  app = express().use(bodyParser.json());
+
 var StravaApiV3 = require('strava_api_v3');
 var defaultClient = StravaApiV3.ApiClient.instance;
+var expiresAt, refreshToken, clientId, clientSecret;
 
 // Configure OAuth2 access token for authorization: strava_oauth
 var strava_oauth = defaultClient.authentications['strava_oauth'];
-strava_oauth.accessToken = "a789cd8c43b56942d7d8a7e863178b5534beaa7e";
+strava_oauth.accessToken = null;
 
 var activitiesApi = new StravaApiV3.ActivitiesApi(defaultClient);
 
@@ -32,7 +42,7 @@ async function addConsecutiveDaysMessage(objectId) {
             if (error) {
                 console.error(error);
             } else {
-                console.log('getActivityByID called successfully. Returned data: ' + data);
+                console.log('getActivityByID called successfully.');
                 var activityUpdate = {
                   'commute': data.commute,
                   'trainer': data.trainer,
@@ -49,7 +59,7 @@ async function addConsecutiveDaysMessage(objectId) {
                     if (error) {
                         console.error(error);
                     } else {
-                        console.log('updateActivityByID called successfully. Returned data: ' + data);
+                        console.log('updateActivityByID called successfully.');
                     }
                 })
             }
@@ -84,13 +94,6 @@ function getDaysSinceLastOffDay(activities) {
     }
     return null;
 }
-  
-// Imports dependencies and sets up http server
-const
-  express = require('express'),
-  bodyParser = require('body-parser'),
-// creates express http server
-  app = express().use(bodyParser.json());
 
 // Sets server port and logs message on success
 app.listen(process.env.PORT || 80, () => console.log('webhook is listening'));
@@ -107,7 +110,17 @@ app.post('/webhook', async (req, res) => {
     // Checks if the correct event data fields are present
     if (object_type && object_id && aspect_type) {
         // Only trigger update when creating an activity
-        if (object_type === 'activity' && aspect_type === 'create') {     
+        if (object_type === 'activity' && aspect_type === 'create') {    
+            if (expiresAt < Date.now()) {
+                let payload = {
+                    "client_id":clientId,
+                    "client_secret":clientSecret,
+                    "grant_type":"refresh_token",
+                    "refresh_token":refreshToken
+                }
+                let res = await axios.post('https://www.strava.com/api/v3/oauth/token', payload);
+                strava_oauth.accessToken = res.data["access_token"];
+            }
             await addConsecutiveDaysMessage(object_id);
             console.log('RUNNING LAST OFF DAY SCRIPT');
         }
@@ -134,4 +147,26 @@ app.get('/webhook', (req, res) => {
       res.sendStatus(403);      
     }
   }
+
+  //TODO: MySQL integration, environment variables, front-end design, website hosting
+  app.get('/exchange_token', async (req, res) => {
+    let code = req.query['code'];
+    let grant_type = req.query['grant_type'];
+    clientId = req.query['client_id'];
+    clientSecret = req.query['client_secret'];
+    if (code && grant_type && client_id && client_secret) {
+        if (grant_type === 'authorization_code') {
+            let payload = {
+                "client_id":clientId,
+                "client_secret":clientSecret,
+                "code":code,
+                "grant_type":grant_type
+            };
+            let response = await axios.post('https://www.strava.com/api/v3/oauth/token', payload);
+            strava_oauth.accessToken = response.data['access_token'];
+            expiresAt = response.data['expires_at'];
+            refreshToken = response.data['refresh_token'];
+        }
+    }
+  })
 });

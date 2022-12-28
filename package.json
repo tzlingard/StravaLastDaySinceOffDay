@@ -4,12 +4,16 @@
   "description": "A Strava application to keep track of the number of days since your last day off from running.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
   },
   "author": "Thomas Lingard",
   "license": "ISC",
   "dependencies": {
+    "axios": "^1.2.1",
     "body-parser": "^1.20.1",
-    "express": "^4.18.2"
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "mysql": "^2.18.1"
   }
 }
