@@ -1,14 +1,16 @@
-const axios = require('axios');
 
 // Imports dependencies and sets up http server
 const
   express = require('express'),
   bodyParser = require('body-parser'),
-// creates express http server
+  path = require('path'),
+  axios = require('axios'),
+  StravaApiV3 = require('strava_api_v3'),
+  // creates express http server
   app = express().use(bodyParser.json());
+  require('dotenv').config();   
 
-var StravaApiV3 = require('strava_api_v3');
-var defaultClient = StravaApiV3.ApiClient.instance;
+  var defaultClient = StravaApiV3.ApiClient.instance;
 var expiresAt, refreshToken, clientId, clientSecret;
 
 // Configure OAuth2 access token for authorization: strava_oauth
@@ -110,17 +112,7 @@ app.post('/webhook', async (req, res) => {
     // Checks if the correct event data fields are present
     if (object_type && object_id && aspect_type) {
         // Only trigger update when creating an activity
-        if (object_type === 'activity' && aspect_type === 'create') {    
-            if (expiresAt < Date.now()) {
-                let payload = {
-                    "client_id":clientId,
-                    "client_secret":clientSecret,
-                    "grant_type":"refresh_token",
-                    "refresh_token":refreshToken
-                }
-                let res = await axios.post('https://www.strava.com/api/v3/oauth/token', payload);
-                strava_oauth.accessToken = res.data["access_token"];
-            }
+        if (object_type === 'activity' && aspect_type === 'create') {  
             await addConsecutiveDaysMessage(object_id);
             console.log('RUNNING LAST OFF DAY SCRIPT');
         }
@@ -147,26 +139,58 @@ app.get('/webhook', (req, res) => {
       res.sendStatus(403);      
     }
   }
+});
 
-  //TODO: MySQL integration, environment variables, front-end design, website hosting
-  app.get('/exchange_token', async (req, res) => {
+  //TODO: front-end design, deploy to Heroku
+  app.get('/auth', async (req, res) => {
+    console.log("Exchange token request received!", req.query, req.body);
     let code = req.query['code'];
-    let grant_type = req.query['grant_type'];
-    clientId = req.query['client_id'];
-    clientSecret = req.query['client_secret'];
-    if (code && grant_type && client_id && client_secret) {
-        if (grant_type === 'authorization_code') {
-            let payload = {
-                "client_id":clientId,
-                "client_secret":clientSecret,
-                "code":code,
-                "grant_type":grant_type
-            };
-            let response = await axios.post('https://www.strava.com/api/v3/oauth/token', payload);
-            strava_oauth.accessToken = response.data['access_token'];
-            expiresAt = response.data['expires_at'];
-            refreshToken = response.data['refresh_token'];
+    if (code) {
+        let payload = {
+            "client_id":process.env.CLIENT_ID,
+            "client_secret":process.env.CLIENT_SECRET,
+            "code":code,
+            "grant_type":"authorization_code"
+        };
+        let response = await axios.post('https://www.strava.com/api/v3/oauth/token', payload);
+        strava_oauth.accessToken = response.data['access_token'];
+        expiresAt = response.data['expires_at'];
+        refreshToken = response.data['refresh_token'];
+        console.log("Authenticated successfully with response "+ JSON.stringify(response.data));
+        response = await axios.get(process.env.DOMAIN_NAME+"/subscribe");
+        res.status(200).send(response.data);
+        } else {
+        res.sendStatus(400);
+    }
+  });
+
+app.get('/subscribe', async (req, res) => {
+    payload = {
+        "client_id":process.env.CLIENT_ID,
+        "client_secret":process.env.CLIENT_SECRET,
+        "callback_url": process.env.DOMAIN_NAME+"/webhook",
+        "verify_token": "STRAVA"
+    };
+    console.log("Calling POST https://www.strava.com/api/v3/push_subscriptions with payload: "+JSON.stringify(payload));
+    try {
+        let response = await axios.post('https://www.strava.com/api/v3/push_subscriptions', payload);
+        let subscriptionId = response.data['id'];
+        if (subscriptionId) {
+            console.log("Successfully subscribed to webhook.");
+            res.status(200).send("Successfully subscribed to Run Streak. You may unsubscribe by following the same link or revoking access on the Strava -> My Apps page.");
+        }
+    } catch (error) {
+        if (error.response.data.errors && error.response.data.errors.length) {
+            if (error.response.data.errors[0].resource === 'PushSubscription' && error.response.data.errors[0].code === 'already exists') {
+                console.log("Already subscribed, removing webhook subscription");
+                let response = await axios.get(`https://www.strava.com/api/v3/push_subscriptions?client_id=${process.env.CLIENT_ID}&client_secret=${process.env.CLIENT_SECRET}`);
+                let subscriptionId = response.data[0]['id'];
+                if (subscriptionId) {
+                    await axios.delete(`https://www.strava.com/api/v3/push_subscriptions/${subscriptionId}?client_id=${process.env.CLIENT_ID}&client_secret=${process.env.CLIENT_SECRET}`);
+                    console.log("Webhook successfully removed.");
+                    res.status(200).send("You are now unsubscribed to Run Streak.");
+                }
+            }
         }
     }
-  })
-});
+    });

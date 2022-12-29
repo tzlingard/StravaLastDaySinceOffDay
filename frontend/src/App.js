@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import logo from './app-icon.png';
 import './App.css';
 
-//TODO: Make client_ID an environment variable (hide from github)
 function App() {
+  var redirectUrl = "https://dc6a-2601-19c-5080-9c90-cdee-88a8-f920-a05.ngrok.io";
   return (
     <div className="App">
       <header className="App-header">
@@ -13,7 +13,7 @@ function App() {
         </p>
         <a
           className="Connect to Strava"
-          href={`https://www.strava.com/oauth/authorize?client_id=99078&response_type=code&redirect_uri=http://localhost/exchange_token&approval_prompt=force&scope=read_all,activity:read_all,activity:read,activity:write#_=_`}
+          href={`https://www.strava.com/oauth/authorize?client_id=99078&response_type=code&redirect_uri=${redirectUrl}/auth&approval_prompt=force&scope=read_all,activity:read_all,activity:read,activity:write#_=_`}
           target="_blank"
           rel="noopener noreferrer"
         >
