@@ -14,14 +14,20 @@
 }
 
 .App-header {
-  background-color: #c1cde3;
+  background-color: #ffd7d7;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: calc(10px + 2vmin);
+  font-size: calc(15px + 2vmin);
   color: rgb(39, 39, 41);
+  font-weight: bold;
+}
+
+.App-subtext {
+  font-size: calc(7px + 2vmin);
+  color: rgb(80, 80, 88);
   font-weight: bold;
 }
 

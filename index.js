@@ -3,7 +3,6 @@
 const
   express = require('express'),
   bodyParser = require('body-parser'),
-  path = require('path'),
   axios = require('axios'),
   StravaApiV3 = require('strava_api_v3'),
   // creates express http server
@@ -11,7 +10,7 @@ const
   require('dotenv').config();   
 
   var defaultClient = StravaApiV3.ApiClient.instance;
-var expiresAt, refreshToken, clientId, clientSecret;
+var expiresAt, refreshToken;
 
 // Configure OAuth2 access token for authorization: strava_oauth
 var strava_oauth = defaultClient.authentications['strava_oauth'];
@@ -25,21 +24,22 @@ async function addConsecutiveDaysMessage(objectId) {
           console.error("Failed to get logged in athlete activites.", error);
         } else {
           console.log('getLoggedInAthleteActivities called successfully.');
-          var offDayDescription = "";
-          var daysSinceLastOffDay = getDaysSinceLastOffDay(data);
-          if (daysSinceLastOffDay == null) {
-            offDayDescription = "No off days found recently. Consider taking a day to rest and recover!";
+          var runStreakDescription = "Run Streak:\n";
+          var consecutiveRuns = getConsecutiveRuns(data);
+          if (consecutiveRuns == null) {
+            runStreakDescription += "No off days found recently. Consider taking a day to rest and recover!";
           } else {
-            offDayDescription = daysSinceLastOffDay + " days of consecutive activity. ";
-            if (daysSinceLastOffDay < 7) {
-              offDayDescription += "Keep up the good work!"
-            } else if (daysSinceLastOffDay >= 7 && daysSinceLastOffDay < 14) {
-              offDayDescription += "Consider a rest day soon."
-            } else if (daysSinceLastOffDay >=14 && daysSinceLastOffDay < 21) {
-              offDayDescription += "Take some time to recover!"
+            if (consecutiveRuns < 5) {
+                runStreakDescription += "    -- " + consecutiveRuns + " --";
+            } else if (consecutiveRuns >= 5 && consecutiveRuns < 10) {
+              runStreakDescription += "   🔥 " + consecutiveRuns + " 🔥";
+            } else if (consecutiveRuns >= 10 && consecutiveRuns < 15) {
+              runStreakDescription += "🔥🔥 " + consecutiveRuns + " 🔥🔥";
+            } else if (consecutiveRuns >=15) {
+              runStreakDescription += "🔥🥵 " + consecutiveRuns + " 🥵🔥";
             }
           }
-          console.log(offDayDescription);
+          console.log(runStreakDescription);
           activitiesApi.getActivityById(objectId, {'includeAllEfforts': true}, function(error, data, response) {
             if (error) {
                 console.error(error);
@@ -49,7 +49,7 @@ async function addConsecutiveDaysMessage(objectId) {
                   'commute': data.commute,
                   'trainer': data.trainer,
                   'hide_from_home': data.hide_from_home,
-                  'description': data.description+"\n\n"+offDayDescription,
+                  'description': data.description+"\n\n"+runStreakDescription,
                   'name': data.name,
                   'sport_type': data.sport_type,
                   'gear_id': data.gear_id
@@ -70,31 +70,36 @@ async function addConsecutiveDaysMessage(objectId) {
     });
 }
   
-function getDaysSinceLastOffDay(activities) {
+function getConsecutiveRuns(activities) {
+    const runs = activities.filter(getRuns);
     // Activities are sorted by start date, with the most recent first
-    var lastDayWithoutActivity = null;
-    const mostRecentActivityDate = activities[0]["startDate"];
-    mostRecentActivityDate.setHours(0,0,0,0);
-    const mostRecentActivityDateTime = activities[0]["startDate"].getTime();
+    var lastDayWithoutRun = null;
+    const mostRecentRunDate = runs[0]["startDate"];
+    mostRecentRunDate.setHours(0,0,0,0);
+    const mostRecentRunDateTime = runs[0]["startDate"].getTime();
 
-    var nextActivityDate = activities[0]["startDate"];
-    for (let i=1; i<activities.length; i++) {
-    var activityDate = activities[i]["startDate"];
-    activityDate.setHours(0,0,0,0);
-    var dayBeforeNextActivity = nextActivityDate;
-    dayBeforeNextActivity.setDate(nextActivityDate.getDate()-1);
-    dayBeforeNextActivity.setHours(0,0,0,0);
+    var nextRunDate = runs[0]["startDate"];
+    for (let i=1; i<runs.length; i++) {
+    var runDate = runs[i]["startDate"];
+    runDate.setHours(0,0,0,0);
+    var dayBeforeNextRun = nextRunDate;
+    dayBeforeNextRun.setDate(nextRunDate.getDate()-1);
+    dayBeforeNextRun.setHours(0,0,0,0);
     // if the day before the most recent activity is more recent than the current (earlier) activity day
     // ie. if the activity is more than a day before the next activity
-    if (activityDate.getTime() < dayBeforeNextActivity.getTime()) {
-        lastDayWithoutActivity = dayBeforeNextActivity;
-        var timeSinceLastOffDay = mostRecentActivityDateTime - lastDayWithoutActivity.getTime();
+    if (runDate.getTime() < dayBeforeNextRun.getTime()) {
+        lastDayWithoutRun = dayBeforeNextRun;
+        var timeSinceLastOffDay = mostRecentRunDateTime - lastDayWithoutRun.getTime();
         return timeSinceLastOffDay / (1000 * 3600 * 24); // number of days since last off day
     } else {
-        nextActivityDate = activityDate;
+        nextRunDate = runDate;
     }
     }
     return null;
+}
+
+function getRuns(activity) {
+    return activity["sportType"] == "Run" || activity["sportType"] == "TrailRun" || activity["sportType"] == "VirtualRun";
 }
 
 // Sets server port and logs message on success
@@ -113,8 +118,16 @@ app.post('/webhook', async (req, res) => {
     if (object_type && object_id && aspect_type) {
         // Only trigger update when creating an activity
         if (object_type === 'activity' && aspect_type === 'create') {  
-            await addConsecutiveDaysMessage(object_id);
-            console.log('RUNNING LAST OFF DAY SCRIPT');
+            activitiesApi.getActivityById(object_id, {'includeAllEfforts':false}, async function(error, data, response) {
+                if (error) {
+                    console.log(error);
+                } else {
+                    if (data['sportType'] == 'Run' || data['sportType'] == 'TrailRun' || data['sportType'] == 'VirtualRun') {
+                        await addConsecutiveDaysMessage(object_id);
+                        console.log('RUNNING LAST OFF DAY SCRIPT');
+                    }
+                }
+            });
         }
     }
 });
@@ -141,7 +154,6 @@ app.get('/webhook', (req, res) => {
   }
 });
 
-  //TODO: front-end design, deploy to Heroku
   app.get('/auth', async (req, res) => {
     console.log("Exchange token request received!", req.query, req.body);
     let code = req.query['code'];
@@ -177,7 +189,7 @@ app.get('/subscribe', async (req, res) => {
         let subscriptionId = response.data['id'];
         if (subscriptionId) {
             console.log("Successfully subscribed to webhook.");
-            res.status(200).send("Successfully subscribed to Run Streak. You may unsubscribe by following the same link or revoking access on the Strava -> My Apps page.");
+            res.status(200).send("Successfully subscribed to Run Streak! You may unsubscribe by following the same link or revoking access on the Strava -> My Apps page.\n\nYou may close this page.");
         }
     } catch (error) {
         if (error.response.data.errors && error.response.data.errors.length) {
@@ -188,7 +200,7 @@ app.get('/subscribe', async (req, res) => {
                 if (subscriptionId) {
                     await axios.delete(`https://www.strava.com/api/v3/push_subscriptions/${subscriptionId}?client_id=${process.env.CLIENT_ID}&client_secret=${process.env.CLIENT_SECRET}`);
                     console.log("Webhook successfully removed.");
-                    res.status(200).send("You are now unsubscribed to Run Streak.");
+                    res.status(200).send("You are now unsubscribed to Run Streak.\n\nYou may close this page.");
                 }
             }
         }

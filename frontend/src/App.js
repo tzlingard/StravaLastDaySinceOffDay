@@ -9,7 +9,10 @@ function App() {
       <header className="App-header">
         <img src={logo} className="App-logo" alt="logo" />
         <p>
-          LAST OFF DAY
+          RUN STREAK
+        </p>
+        <p className="App-subtext">
+          A Strava app by Thomas Lingard
         </p>
         <a
           className="Connect to Strava"
