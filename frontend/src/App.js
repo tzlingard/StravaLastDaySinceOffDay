@@ -3,7 +3,7 @@ import logo from './app-icon.png';
 import './App.css';
 
 function App() {
-  var redirectUrl = "https://dc6a-2601-19c-5080-9c90-cdee-88a8-f920-a05.ngrok.io";
+  var redirectUrl = "localhost";
   return (
     <div className="App">
       <header className="App-header">

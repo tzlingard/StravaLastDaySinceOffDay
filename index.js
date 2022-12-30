@@ -189,34 +189,34 @@ app.get('/webhook', (req, res) => {
   }
 });
 
-  app.get('/auth', async (req, res) => {
-    console.log("Exchange token request received!", req.query, req.body);
-    let code = req.query['code'];
-    if (code) {
-        let payload = {
-            "client_id":process.env.CLIENT_ID,
-            "client_secret":process.env.CLIENT_SECRET,
-            "code":code,
-            "grant_type":"authorization_code"
-        };
-        let response = await axios.post('https://www.strava.com/api/v3/oauth/token', payload);
-        var authData = {
-            accessToken: response.data['access_token'],
-            refreshToken: response.data['refresh_token'],
-            expiresAt: response.data['expires_at'],
-            athleteId: response.data['athlete']['id']
-        }
-        // add the authData to the database, or update the existing document with the new authData
-        db.update({ athleteId: response.data['athlete']['id']}, authData, { upsert: true });
-        console.log("Added authData to the database: "+ JSON.stringify(authData));
-        strava_oauth.accessToken = response.data['access_token'];
-        console.log("Authenticated successfully with response "+ JSON.stringify(response.data));
-        response = await axios.get(process.env.DOMAIN_NAME+"/subscribe");
-        res.status(200).send(response.data);
-        } else {
-        res.sendStatus(400);
+app.get('/auth', async (req, res) => {
+console.log("Exchange token request received!", req.query, req.body);
+let code = req.query['code'];
+if (code) {
+    let payload = {
+        "client_id":process.env.CLIENT_ID,
+        "client_secret":process.env.CLIENT_SECRET,
+        "code":code,
+        "grant_type":"authorization_code"
+    };
+    let response = await axios.post('https://www.strava.com/api/v3/oauth/token', payload);
+    var authData = {
+        accessToken: response.data['access_token'],
+        refreshToken: response.data['refresh_token'],
+        expiresAt: response.data['expires_at'],
+        athleteId: response.data['athlete']['id']
     }
-  });
+    // add the authData to the database, or update the existing document with the new authData
+    db.update({ athleteId: response.data['athlete']['id']}, authData, { upsert: true });
+    console.log("Added authData to the database: "+ JSON.stringify(authData));
+    strava_oauth.accessToken = response.data['access_token'];
+    console.log("Authenticated successfully with response "+ JSON.stringify(response.data));
+    response = await axios.get(process.env.DOMAIN_NAME+"/subscribe");
+    res.status(200).send(response.data);
+    } else {
+    res.sendStatus(400);
+}
+});
 
 app.get('/subscribe', async (req, res) => {
     console.log("Subscribe request received");
@@ -247,4 +247,10 @@ app.get('/subscribe', async (req, res) => {
             }
         }
     }
-    });
+});
+
+app.use(express.static(`${__dirname}/frontend/build`));
+
+app.get('/', function (req, res) {
+    res.sendFile(path.join(__dirname, '/frontend/build', 'index.html'));
+  });
