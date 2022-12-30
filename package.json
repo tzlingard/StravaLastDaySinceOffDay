@@ -1,5 +1,5 @@
 {
-  "name": "stravalastoffday",
+  "name": "stravarunstreak",
   "version": "1.0.0",
   "description": "A Strava application to keep track of the number of days since your last day off from running.",
   "main": "index.js",

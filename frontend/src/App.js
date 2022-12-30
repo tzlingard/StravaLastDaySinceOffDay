@@ -3,7 +3,7 @@ import logo from './app-icon.png';
 import './App.css';
 
 function App() {
-  var redirectUrl = "localhost";
+  var redirectUrl = "https://main.d3fu3r4798sqcd.amplifyapp.com";
   return (
     <div className="App">
       <header className="App-header">
