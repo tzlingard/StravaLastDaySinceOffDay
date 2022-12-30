@@ -25,8 +25,16 @@
   font-weight: bold;
 }
 
+.App-description {
+  font-size: calc(6px + 2vmin);
+  color: rgb(80, 80, 88);
+  text-align: left;
+  margin-left: 10%;
+  margin-right: 10%;
+}
+
 .App-subtext {
-  font-size: calc(7px + 2vmin);
+  font-size: calc(10px + 2vmin);
   color: rgb(80, 80, 88);
   font-weight: bold;
 }

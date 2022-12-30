@@ -22,6 +22,9 @@ function App() {
         >
           Connect to Strava
         </a>
+        <h1 className="App-description">
+      <p>Click "Connect to Strava" to track your consecutive days of running! Your streak will be automatically appended to the description of each of your runs logged on Strava. You may disable this feature at any time by clicking the same button again. </p>
+      </h1>
       </header>
     </div>
   );

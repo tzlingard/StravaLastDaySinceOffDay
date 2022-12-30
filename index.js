@@ -10,7 +10,8 @@ const
   require('dotenv').config();   
 
   var defaultClient = StravaApiV3.ApiClient.instance;
-var expiresAt, refreshToken;
+
+var Datastore = require('nedb'), db = new Datastore();
 
 // Configure OAuth2 access token for authorization: strava_oauth
 var strava_oauth = defaultClient.authentications['strava_oauth'];
@@ -32,7 +33,7 @@ async function addConsecutiveDaysMessage(objectId) {
             if (consecutiveRuns < 5) {
                 runStreakDescription += "    -- " + consecutiveRuns + " --";
             } else if (consecutiveRuns >= 5 && consecutiveRuns < 10) {
-              runStreakDescription += "   🔥 " + consecutiveRuns + " 🔥";
+              runStreakDescription += "  🔥 " + consecutiveRuns + " 🔥";
             } else if (consecutiveRuns >= 10 && consecutiveRuns < 15) {
               runStreakDescription += "🔥🔥 " + consecutiveRuns + " 🔥🔥";
             } else if (consecutiveRuns >=15) {
@@ -44,12 +45,12 @@ async function addConsecutiveDaysMessage(objectId) {
             if (error) {
                 console.error(error);
             } else {
-                console.log('getActivityByID called successfully.');
+                var description = data.description ? data.description+"/n/n"+runStreakDescription : runStreakDescription;
                 var activityUpdate = {
                   'commute': data.commute,
                   'trainer': data.trainer,
                   'hide_from_home': data.hide_from_home,
-                  'description': data.description+"\n\n"+runStreakDescription,
+                  'description': description,
                   'name': data.name,
                   'sport_type': data.sport_type,
                   'gear_id': data.gear_id
@@ -74,13 +75,13 @@ function getConsecutiveRuns(activities) {
     const runs = activities.filter(getRuns);
     // Activities are sorted by start date, with the most recent first
     var lastDayWithoutRun = null;
-    const mostRecentRunDate = runs[0]["startDate"];
+    const mostRecentRunDate = runs[0]["start_date"];
     mostRecentRunDate.setHours(0,0,0,0);
-    const mostRecentRunDateTime = runs[0]["startDate"].getTime();
+    const mostRecentRunDateTime = runs[0]["start_date"].getTime();
 
-    var nextRunDate = runs[0]["startDate"];
+    var nextRunDate = runs[0]["start_date"];
     for (let i=1; i<runs.length; i++) {
-    var runDate = runs[i]["startDate"];
+    var runDate = runs[i]["start_date"];
     runDate.setHours(0,0,0,0);
     var dayBeforeNextRun = nextRunDate;
     dayBeforeNextRun.setDate(nextRunDate.getDate()-1);
@@ -99,7 +100,7 @@ function getConsecutiveRuns(activities) {
 }
 
 function getRuns(activity) {
-    return activity["sportType"] == "Run" || activity["sportType"] == "TrailRun" || activity["sportType"] == "VirtualRun";
+    return activity["type"] == "Run" || activity["type"] == "TrailRun" || activity["type"] == "VirtualRun";
 }
 
 // Sets server port and logs message on success
@@ -110,21 +111,55 @@ app.post('/webhook', async (req, res) => {
     console.log("webhook event received!", req.query, req.body);
     res.status(200).send('EVENT_RECEIVED');
     // Parses the query params
-    let object_type = req.body['object_type'];
-    let object_id = req.body['object_id'];
-    let aspect_type = req.body['aspect_type'];
+    let objectType = req.body['object_type'];
+    let objectId = req.body['object_id'];
+    let aspectType = req.body['aspect_type'];
+    let ownerId = req.body['owner_id'];
 
     // Checks if the correct event data fields are present
-    if (object_type && object_id && aspect_type) {
+    if (objectType && objectId && aspectType && ownerId) {
         // Only trigger update when creating an activity
-        if (object_type === 'activity' && aspect_type === 'create') {  
-            activitiesApi.getActivityById(object_id, {'includeAllEfforts':false}, async function(error, data, response) {
-                if (error) {
-                    console.log(error);
+        if (objectType === 'activity' && aspectType === 'create') {  
+            console.log("Activity created, querying database for authData...");
+            db.find({ athleteId: ownerId}, async function(err, data) {
+                if (err) {
+                    console.error(err);
                 } else {
-                    if (data['sportType'] == 'Run' || data['sportType'] == 'TrailRun' || data['sportType'] == 'VirtualRun') {
-                        await addConsecutiveDaysMessage(object_id);
-                        console.log('RUNNING LAST OFF DAY SCRIPT');
+                    console.log("authData found: "+JSON.stringify(data));
+                    if (data) {
+                        // Date.now() gives milliseconds since epoch, strava API gives seconds since epoch
+                        if (data[0]["expiresAt"] < (Date.now() /1000)) {
+                            console.log("Access token expired, refreshing. expiresAt = "+data[0]["expiresAt"]+" , Date.now() = "+Date.now());
+                            let payload = {
+                                "client_id":process.env.CLIENT_ID,
+                                "client_secret":process.env.CLIENT_SECRET,
+                                "refresh_token":data[0]["refreshToken"],
+                                "grant_type":"refresh_token"
+                            };
+                            let response = await axios.post('https://www.strava.com/api/v3/oauth/token', payload);
+                            var authData = {
+                                accessToken: response.data['access_token'],
+                                refreshToken: response.data['refresh_token'],
+                                expiresAt: response.data['expires_at'],
+                                athleteId: ownerId
+                            };
+                            db.update({ athleteId: ownerId}, authData, { upsert: true });
+                            strava_oauth.accessToken = response.data['access_token'];
+                        }
+                        console.log("Authenticated");
+                        activitiesApi.getActivityById(objectId, {'includeAllEfforts':false}, async function(error, data, response) {
+                            if (error) {
+                                console.log(error);
+                            } else {
+                                console.log("Activity found: "+JSON.stringify(data));
+                                if (data['type'] == 'Run' || data['type'] == 'TrailRun' || data['type'] == 'VirtualRun') {
+                                    console.log('RUNNING LAST OFF DAY SCRIPT');
+                                    await addConsecutiveDaysMessage(objectId);
+                                }
+                            }
+                        });
+                    } else {
+                        console.log("No authentication data found for athlete with ID "+ownerId);
                     }
                 }
             });
@@ -165,9 +200,16 @@ app.get('/webhook', (req, res) => {
             "grant_type":"authorization_code"
         };
         let response = await axios.post('https://www.strava.com/api/v3/oauth/token', payload);
+        var authData = {
+            accessToken: response.data['access_token'],
+            refreshToken: response.data['refresh_token'],
+            expiresAt: response.data['expires_at'],
+            athleteId: response.data['athlete']['id']
+        }
+        // add the authData to the database, or update the existing document with the new authData
+        db.update({ athleteId: response.data['athlete']['id']}, authData, { upsert: true });
+        console.log("Added authData to the database: "+ JSON.stringify(authData));
         strava_oauth.accessToken = response.data['access_token'];
-        expiresAt = response.data['expires_at'];
-        refreshToken = response.data['refresh_token'];
         console.log("Authenticated successfully with response "+ JSON.stringify(response.data));
         response = await axios.get(process.env.DOMAIN_NAME+"/subscribe");
         res.status(200).send(response.data);
@@ -177,13 +219,13 @@ app.get('/webhook', (req, res) => {
   });
 
 app.get('/subscribe', async (req, res) => {
+    console.log("Subscribe request received");
     payload = {
         "client_id":process.env.CLIENT_ID,
         "client_secret":process.env.CLIENT_SECRET,
         "callback_url": process.env.DOMAIN_NAME+"/webhook",
         "verify_token": "STRAVA"
     };
-    console.log("Calling POST https://www.strava.com/api/v3/push_subscriptions with payload: "+JSON.stringify(payload));
     try {
         let response = await axios.post('https://www.strava.com/api/v3/push_subscriptions', payload);
         let subscriptionId = response.data['id'];
