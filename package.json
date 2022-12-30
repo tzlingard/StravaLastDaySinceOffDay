@@ -9,7 +9,7 @@
     "build": "cd frontend && npm install && npm run build"
   },
   "engines": {
-    "node": "v18.12.1"
+    "node": ">=16.19.0"
   },
   "author": "Thomas Lingard",
   "license": "ISC",
