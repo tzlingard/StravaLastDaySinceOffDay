@@ -14,5 +14,7 @@ This app uses Node.Js with Express to make REST calls to Strava's API. Clicking 
 
 After that, creating an activity triggers the webhook endpoint of the app, which calculates the number of consecutive days of running before the activity was posted and appends that number to the activity's description.
 
+The simple webpage was created in React, and the website and backend API are hosted on Render.
+
 ## Author
 Thomas Lingard
