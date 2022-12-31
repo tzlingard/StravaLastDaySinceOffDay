@@ -3,7 +3,7 @@ import logo from './app-icon.png';
 import './App.css';
 
 function App() {
-  var redirectUrl = "https://stravarunstreak.onrender.com";
+  var redirectUrl = "https://stravarunstreakapi.onrender.com";
   return (
     <div className="App">
       <header className="App-header">

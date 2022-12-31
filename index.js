@@ -5,6 +5,7 @@ const
   bodyParser = require('body-parser'),
   axios = require('axios'),
   StravaApiV3 = require('strava_api_v3'),
+  path = require('path'),
   // creates express http server
   app = express().use(bodyParser.json());
   require('dotenv').config();   
