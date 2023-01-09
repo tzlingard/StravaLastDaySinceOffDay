@@ -243,7 +243,7 @@ app.get('/callback', async (req, res) => {
                             res.status(200).send("You are now unsubscribed to Run Streak.\n\nYou may close this page.");
                         }
                     } else {
-                        console.log("Error subscribing to webhook", error);
+                        console.log("Error subscribing to webhook", error.response.data.errors);
                         res.status(400).send("Failed to subscribe to Strava's webhook.");
                     }
                 }
