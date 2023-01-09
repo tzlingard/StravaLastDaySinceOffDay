@@ -16,7 +16,7 @@ function App() {
         </p>
         <a
           className="Connect to Strava"
-          href={`https://www.strava.com/oauth/authorize?client_id=99078&response_type=code&redirect_uri=${redirectUrl}/auth&approval_prompt=force&scope=read_all,activity:read_all,activity:read,activity:write#_=_`}
+          href={`https://www.strava.com/oauth/authorize?client_id=99078&response_type=code&redirect_uri=${redirectUrl}/callback&approval_prompt=force&scope=read_all,activity:read_all,activity:read,activity:write#_=_`}
           target="_blank"
           rel="noopener noreferrer"
         >

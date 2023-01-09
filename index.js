@@ -190,7 +190,7 @@ app.get('/webhook', (req, res) => {
   }
 });
 
-app.get('/auth', async (req, res) => {
+app.get('/callback', async (req, res) => {
     console.log("Exchange token request received!", req.query, req.body);
     let code = req.query['code'];
     if (code) {
@@ -213,48 +213,46 @@ app.get('/auth', async (req, res) => {
             console.log("Added authData to the database: "+ JSON.stringify(authData));
             strava_oauth.accessToken = response.data['access_token'];
             console.log("Authenticated successfully with response "+ JSON.stringify(response.data));
-            response = await axios.get(process.env.DOMAIN_NAME+"/subscribe");
-            res.status(200).send(response.data);
         } catch (error) {
-            console.log("Error exchanging authentication tokens");
-            res.sendStatus(400);
-        }
-    } else {
-        res.sendStatus(400);
-    }
-});
-
-app.get('/subscribe', async (req, res) => {
-    console.log("Subscribe request received");
-    payload = {
-        "client_id":process.env.CLIENT_ID,
-        "client_secret":process.env.CLIENT_SECRET,
-        "callback_url": process.env.DOMAIN_NAME+"/webhook",
-        "verify_token": "STRAVA"
-    };
-    try {
-        let response = await axios.post('https://www.strava.com/api/v3/push_subscriptions', payload);
-        let subscriptionId = response.data['id'];
-        if (subscriptionId) {
-            console.log("Successfully subscribed to webhook.");
-            res.status(200).send("Successfully subscribed to Run Streak! You may unsubscribe by following the same link or revoking access on the Strava -> My Apps page.\n\nYou may close this page.");
-        }
-    } catch (error) {
-        if (error.response.data.errors && error.response.data.errors.length) {
-            if (error.response.data.errors[0].resource === 'PushSubscription' && error.response.data.errors[0].code === 'already exists') {
-                console.log("Already subscribed, removing webhook subscription");
-                let response = await axios.get(`https://www.strava.com/api/v3/push_subscriptions?client_id=${process.env.CLIENT_ID}&client_secret=${process.env.CLIENT_SECRET}`);
-                let subscriptionId = response.data[0]['id'];
+            console.log("Error exchanging authentication tokens", error);
+            res.status(400).send("Failed to authenticate with Strava.");
+        } finally {
+            console.log("Attempting subscribe to webhook");
+            payload = {
+                "client_id":process.env.CLIENT_ID,
+                "client_secret":process.env.CLIENT_SECRET,
+                "callback_url": process.env.DOMAIN_NAME+"/webhook",
+                "verify_token": "STRAVA"
+            };
+            try {
+                let response = await axios.post('https://www.strava.com/api/v3/push_subscriptions', payload);
+                let subscriptionId = response.data['id'];
                 if (subscriptionId) {
-                    await axios.delete(`https://www.strava.com/api/v3/push_subscriptions/${subscriptionId}?client_id=${process.env.CLIENT_ID}&client_secret=${process.env.CLIENT_SECRET}`);
-                    console.log("Webhook successfully removed.");
-                    res.status(200).send("You are now unsubscribed to Run Streak.\n\nYou may close this page.");
+                    console.log("Successfully subscribed to webhook.");
+                    res.status(200).send("Successfully subscribed to Run Streak! You may unsubscribe by following the same link or revoking access on the Strava -> My Apps page.\n\nYou may close this page.");
+                }
+            } catch (error) {
+                if (error.response.data.errors && error.response.data.errors.length) {
+                    if (error.response.data.errors[0].resource === 'PushSubscription' && error.response.data.errors[0].code === 'already exists') {
+                        console.log("Already subscribed, removing webhook subscription");
+                        let response = await axios.get(`https://www.strava.com/api/v3/push_subscriptions?client_id=${process.env.CLIENT_ID}&client_secret=${process.env.CLIENT_SECRET}`);
+                        let subscriptionId = response.data[0]['id'];
+                        if (subscriptionId) {
+                            await axios.delete(`https://www.strava.com/api/v3/push_subscriptions/${subscriptionId}?client_id=${process.env.CLIENT_ID}&client_secret=${process.env.CLIENT_SECRET}`);
+                            console.log("Webhook successfully removed.");
+                            res.status(200).send("You are now unsubscribed to Run Streak.\n\nYou may close this page.");
+                        }
+                    } else {
+                        console.log("Error subscribing to webhook", error);
+                        res.status(400).send("Failed to subscribe to Strava's webhook.");
+                    }
                 }
             }
         }
+    } else {
+        res.status(400).send("Code required to authenticate with Strava.");
     }
 });
-
 app.use(express.static(`${__dirname}/frontend/build`));
 
 app.get('/*', function (req, res) {
