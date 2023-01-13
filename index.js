@@ -127,7 +127,7 @@ app.post('/webhook', async (req, res) => {
                     console.error(err);
                 } else {
                     console.log("authData found: "+JSON.stringify(data));
-                    if (data) {
+                    if (data && data.length) {
                         // Date.now() gives milliseconds since epoch, strava API gives seconds since epoch
                         if (data[0]["expiresAt"] < (Date.now() / 1000)) {
                             console.log("Access token expired, refreshing. expiresAt = "+data[0]["expiresAt"]+" , Date.now() = "+Date.now());
@@ -152,10 +152,11 @@ app.post('/webhook', async (req, res) => {
                             if (error) {
                                 console.log(error);
                             } else {
-                                console.log("Activity found: "+JSON.stringify(data));
                                 if (data['type'] == 'Run' || data['type'] == 'TrailRun' || data['type'] == 'VirtualRun') {
-                                    console.log('RUNNING LAST OFF DAY SCRIPT');
+                                    console.log('RUNNING RUN STREAK SCRIPT');
                                     await addConsecutiveDaysMessage(objectId);
+                                } else {
+                                    console.log("Not a run, Run Streak script not triggered.");
                                 }
                             }
                         });
@@ -213,7 +214,7 @@ app.get('/callback', async (req, res) => {
             db.update({ athleteId: response.data['athlete']['id']}, authData, { upsert: true });
             console.log("Added authData to the database: "+ JSON.stringify(authData));
             strava_oauth.accessToken = response.data['access_token'];
-            console.log("Authenticated successfully with response "+ JSON.stringify(response.data));
+            console.log("Authenticated successfully");
         } catch (error) {
             console.log("Error exchanging authentication tokens", error);
             res.status(400).send("Failed to authenticate with Strava.");
