@@ -169,7 +169,8 @@ app.post('/webhook', async (req, res) => {
 });
 
 // Adds support for GET requests to our webhook
-app.get('/webhook', (req, res) => {
+app.get('/webhook', async (req, res) => {
+  console.log("Verify webhook request received", req.query, req.body);
   // Your verify token. Should be a random string.
   const VERIFY_TOKEN = "STRAVA";
   // Parses the query params
@@ -217,13 +218,13 @@ app.get('/callback', async (req, res) => {
             console.log("Error exchanging authentication tokens", error);
             res.status(400).send("Failed to authenticate with Strava.");
         } finally {
-            console.log("Attempting subscribe to webhook");
             payload = {
                 "client_id":process.env.CLIENT_ID,
                 "client_secret":process.env.CLIENT_SECRET,
                 "callback_url": process.env.DOMAIN_NAME+"/webhook",
                 "verify_token": "STRAVA"
             };
+            console.log("Attempting subscribe to webhook with payload "+JSON.stringify(payload));
             try {
                 let response = await axios.post('https://www.strava.com/api/v3/push_subscriptions', payload);
                 let subscriptionId = response.data['id'];
