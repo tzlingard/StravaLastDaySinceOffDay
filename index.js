@@ -76,13 +76,13 @@ function getConsecutiveRuns(activities) {
     const runs = activities.filter(getRuns);
     // Activities are sorted by start date, with the most recent first
     var lastDayWithoutRun = null;
-    const mostRecentRunDate = runs[0]["start_date"];
+    const mostRecentRunDate = runs[0]["start_date_local"];
     mostRecentRunDate.setHours(0,0,0,0);
-    const mostRecentRunDateTime = runs[0]["start_date"].getTime();
+    const mostRecentRunDateTime = runs[0]["start_date_local"].getTime();
 
-    var nextRunDate = runs[0]["start_date"];
+    var nextRunDate = runs[0]["start_date_local"];
     for (let i=1; i<runs.length; i++) {
-    var runDate = runs[i]["start_date"];
+    var runDate = runs[i]["start_date_local"];
     runDate.setHours(0,0,0,0);
     var dayBeforeNextRun = nextRunDate;
     dayBeforeNextRun.setDate(nextRunDate.getDate()-1);
