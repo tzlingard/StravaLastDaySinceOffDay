@@ -6,13 +6,18 @@ const
   axios = require('axios'),
   StravaApiV3 = require('strava_api_v3'),
   path = require('path'),
+  { Client } = require('pg'),
   // creates express http server
   app = express().use(bodyParser.json());
   require('dotenv').config();   
 
-  var defaultClient = StravaApiV3.ApiClient.instance;
-
-var Datastore = require('nedb'), db = new Datastore();
+var defaultClient = StravaApiV3.ApiClient.instance;
+const client = new Client({
+    host: process.env.PGHOST,
+    port: process.env.PGPORT,
+    user: process.env.PGUSER,
+    password: process.env.PGPASSWORD
+});
 
 // Configure OAuth2 access token for authorization: strava_oauth
 var strava_oauth = defaultClient.authentications['strava_oauth'];
@@ -122,7 +127,8 @@ app.post('/webhook', async (req, res) => {
         // Only trigger update when creating an activity
         if (objectType === 'activity' && aspectType === 'create') {  
             console.log("Activity created, querying database for authData...");
-            db.find({ athleteId: ownerId}, async function(err, data) {
+            client.connect();
+            client.query('SELECT * FROM user_data WHERE athleteId=$1', [ownerId], async (err, data) => {
                 if (err) {
                     console.error(err);
                 } else {
@@ -138,13 +144,10 @@ app.post('/webhook', async (req, res) => {
                                 "grant_type":"refresh_token"
                             };
                             let response = await axios.post('https://www.strava.com/api/v3/oauth/token', payload);
-                            var authData = {
-                                accessToken: response.data['access_token'],
-                                refreshToken: response.data['refresh_token'],
-                                expiresAt: response.data['expires_at'],
-                                athleteId: ownerId
-                            };
-                            db.update({ athleteId: ownerId}, authData, { upsert: true });
+                            client.query('UPDATE user_data SET accessToken = $1, refreshToken = $2, expiresAt = $3 WHERE athleteId=$1', 
+                            [response.data['access_token'], response.data['refresh_token'], response.data['expires_at'], ownerId]).then(res => {
+                                console.log("Updated SQL database: " + res.rows[0]);
+                            });
                             strava_oauth.accessToken = response.data['access_token'];
                         }
                         console.log("Authenticated");
@@ -165,6 +168,7 @@ app.post('/webhook', async (req, res) => {
                     }
                 }
             });
+            client.end();
         }
     }
 });
@@ -204,17 +208,15 @@ app.get('/callback', async (req, res) => {
         };
         try {
             let response = await axios.post('https://www.strava.com/api/v3/oauth/token', payload);
-            var authData = {
-                accessToken: response.data['access_token'],
-                refreshToken: response.data['refresh_token'],
-                expiresAt: response.data['expires_at'],
-                athleteId: response.data['athlete']['id']
-            }
             // add the authData to the database, or update the existing document with the new authData
-            db.update({ athleteId: response.data['athlete']['id']}, authData, { upsert: true });
-            console.log("Added authData to the database: "+ JSON.stringify(authData));
+            client.connect();
+            client.query('INSERT INTO user_data(athleteId, accessToken, refreshToken, expiresAt) VALUES($1, $2, $3, $4) ON CONFLICT(athleteId) DO UPDATE SET accessToken = $2, refreshToken = $3, expiresAt = $4'
+            [response.data['athlete']['id'], response.data['access_token'], response.data['refresh_token'], response.data['expires_at']]).then(res => {
+                console.log("Added auth info into SQL database: " + res.rows[0]);
+            });
             strava_oauth.accessToken = response.data['access_token'];
             console.log("Authenticated successfully");
+            client.end();
         } catch (error) {
             console.log("Error exchanging authentication tokens", error);
             res.status(400).send("Failed to authenticate with Strava.");

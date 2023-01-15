@@ -10,7 +10,7 @@ Run Streak is an app that uses Strava's API to automatically track the number of
 Running is all about consistency. Whether you are just getting into running as a New Year's resolution or you are a Division 1 cross-country runner, regular training is essential to any long-term improvement. Conversely, overtraining is a common issue at the higher levels of running, which can lead to stress injuries, fatigue, and mental blocks. Finding the right balance between training and recovering can make the difference for athletes across many skill levels.   
 
 ## How!
-This app uses Node.Js with Express to make REST calls to Strava's API. Clicking "authorize" activates the Run Streak API endpoints for beginning the authorization process and subscribing to the webhook. The user's access token is stored in a [NeDB](https://github.com/louischatriot/nedb) datastore (a JavaScript database kept in-memory), alongside the athlete's ID, refresh token for refreshing the authentication once the access token expires, and time of token expiry. 
+This app uses Node.Js with Express to make REST calls to Strava's API. Clicking "authorize" activates the Run Streak API endpoints for beginning the authorization process and subscribing to the webhook. The user's access token is stored in a Postgres table, alongside the athlete's ID, refresh token for refreshing the authentication once the access token expires, and time of token expiry so that authentication can be re-established when necessary for posting another run. 
 
 After that, creating an activity triggers the webhook endpoint of the app, which calculates the number of consecutive days of running before the activity was posted and appends that number to the activity's description.
 
