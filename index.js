@@ -12,7 +12,6 @@ const
   require('dotenv').config();   
 
 var defaultClient = StravaApiV3.ApiClient.instance;
-var client;
 
 // Configure OAuth2 access token for authorization: strava_oauth
 var strava_oauth = defaultClient.authentications['strava_oauth'];
@@ -122,13 +121,13 @@ app.post('/webhook', async (req, res) => {
         // Only trigger update when creating an activity
         if (objectType === 'activity' && aspectType === 'create') {  
             console.log("Activity created, querying database for authData...");
-            client = new Client({
+            const client = new Client({
                 connectionString: process.env.PGCONNECTIONSTRING
             });
-            client.connect();
+            await client.connect();
             client.query('SELECT * FROM user_data WHERE athleteId=$1', [ownerId], async (err, data) => {
                 if (err) {
-                    console.error(err);
+                    console.error("Error querying authData: " + err);
                 } else {
                     console.log("authData found: "+JSON.stringify(data));
                     if (data && data.length) {
@@ -214,7 +213,7 @@ app.get('/callback', async (req, res) => {
         }
         try {
             // add the authData to the database, or update the existing document with the new authData
-            client = new Client({
+            const client = new Client({
                 connectionString: process.env.PGCONNECTIONSTRING
             });
             client.connect();
