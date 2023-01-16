@@ -218,7 +218,7 @@ app.get('/callback', async (req, res) => {
         try {
             // add the authData to the database, or update the existing document with the new authData
             client = new Client({
-                connectionString: 'postgres://stravarunstreakauthdb_user:uNiPBMRLFYYYEEnUwgzIEpRXuAn5L1HI@dpg-cerp9h5a4991p151drcg-a/stravarunstreakauthdb'
+                connectionString: process.env.PGCONNECTIONSTRING
             });
             client.connect();
             client.query('INSERT INTO user_data(athleteId, accessToken, refreshToken, expiresAt) VALUES($1, $2, $3, $4) ON CONFLICT(athleteId) DO UPDATE;'
