@@ -12,12 +12,7 @@ const
   require('dotenv').config();   
 
 var defaultClient = StravaApiV3.ApiClient.instance;
-const client = new Client({
-    host: process.env.PGHOST,
-    port: process.env.PGPORT,
-    user: process.env.PGUSER,
-    password: process.env.PGPASSWORD
-});
+var client;
 
 // Configure OAuth2 access token for authorization: strava_oauth
 var strava_oauth = defaultClient.authentications['strava_oauth'];
@@ -127,6 +122,12 @@ app.post('/webhook', async (req, res) => {
         // Only trigger update when creating an activity
         if (objectType === 'activity' && aspectType === 'create') {  
             console.log("Activity created, querying database for authData...");
+            client = new Client({
+                host: process.env.PGHOST,
+                port: process.env.PGPORT,
+                user: process.env.PGUSER,
+                password: process.env.PGPASSWORD
+            });
             client.connect();
             client.query('SELECT * FROM user_data WHERE athleteId=$1', [ownerId], async (err, data) => {
                 if (err) {
@@ -209,8 +210,14 @@ app.get('/callback', async (req, res) => {
         try {
             let response = await axios.post('https://www.strava.com/api/v3/oauth/token', payload);
             // add the authData to the database, or update the existing document with the new authData
+            client = new Client({
+                host: process.env.PGHOST,
+                port: process.env.PGPORT,
+                user: process.env.PGUSER,
+                password: process.env.PGPASSWORD
+            });
             client.connect();
-            client.query('INSERT INTO user_data(athleteId, accessToken, refreshToken, expiresAt) VALUES($1, $2, $3, $4) ON CONFLICT(athleteId) DO UPDATE SET accessToken = $2, refreshToken = $3, expiresAt = $4'
+            client.query('INSERT INTO user_data(athleteId, accessToken, refreshToken, expiresAt) VALUES($1, $2, $3, $4) ON CONFLICT(athleteId) DO UPDATE'
             [response.data['athlete']['id'], response.data['access_token'], response.data['refresh_token'], response.data['expires_at']]).then(res => {
                 console.log("Added auth info into SQL database: " + res.rows[0]);
             });
