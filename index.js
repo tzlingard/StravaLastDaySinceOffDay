@@ -145,10 +145,10 @@ app.post('/webhook', async (req, res) => {
                                 "grant_type":"refresh_token"
                             };
                             let response = await axios.post('https://www.strava.com/api/v3/oauth/token', payload);
-                            client.query('UPDATE user_data SET accessToken = $1, refreshToken = $2, expiresAt = $3 WHERE athleteId=$1', 
+                            client.query('UPDATE user_data SET accessToken = $1, refreshToken = $2, expiresAt = $3 WHERE athleteId=$1 RETURNING *', 
                             [response.data['access_token'], response.data['refresh_token'], response.data['expires_at'], ownerId]).then(res => {
                                 console.log("Updated SQL database: " + res.rows[0]);
-                            });
+                            }).catch(e => console.error(e.stack));
                             strava_oauth.accessToken = response.data['access_token'];
                         }
                         console.log("Authenticated");
@@ -221,15 +221,14 @@ app.get('/callback', async (req, res) => {
                 connectionString: process.env.PGCONNECTIONSTRING
             });
             client.connect();
-            client.query('INSERT INTO user_data(athleteId, accessToken, refreshToken, expiresAt) VALUES($1, $2, $3, $4) ON CONFLICT(athleteId) DO UPDATE;'
-            [authData.data['athlete']['id'], authData.data['access_token'], authData.data['refresh_token'], authData.data['expires_at']]).then(res => {
-                console.log("Added auth info into SQL database: " + res.rows[0]);
-            });
+            const dbResponse = await client.query('INSERT INTO user_data(athleteId, accessToken, refreshToken, expiresAt) VALUES($1, $2, $3, $4) ON CONFLICT(athleteId) DO UPDATE RETURNING *'
+            [authData.data['athlete']['id'], authData.data['access_token'], authData.data['refresh_token'], authData.data['expires_at']]);
+            console.log("Successfully added authentication data to database: "+dbResponse.rows[0]);
             strava_oauth.accessToken = authData.data['access_token'];
             console.log("Authenticated successfully");
             client.end();
         } catch (error) {
-            console.log("Error storing authentication data in database", error);
+            console.log("Error storing authentication data in database", error.stack);
         } finally {
             payload = {
                 "client_id":process.env.CLIENT_ID,
