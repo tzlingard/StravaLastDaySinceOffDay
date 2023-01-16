@@ -221,8 +221,10 @@ app.get('/callback', async (req, res) => {
                 connectionString: process.env.PGCONNECTIONSTRING
             });
             client.connect();
-            const dbResponse = await client.query('INSERT INTO user_data(athleteId, accessToken, refreshToken, expiresAt) VALUES($1, $2, $3, $4) ON CONFLICT(athleteId) DO UPDATE RETURNING *'
-            [authData.data['athlete']['id'], authData.data['access_token'], authData.data['refresh_token'], authData.data['expires_at']]);
+            let queryText = 'INSERT INTO user_data(athleteId, accessToken, refreshToken, expiresAt) VALUES($1, $2, $3, $4) ON CONFLICT(athleteId) DO UPDATE RETURNING *';
+            let queryValues = [authData.data['athlete']['id'], authData.data['access_token'], authData.data['refresh_token'], authData.data['expires_at']];
+            console.log("Attempting SQL query: " + queryText + "\nWith values: "+queryValues);
+            const dbResponse = await client.query(queryText, queryValues);
             console.log("Successfully added authentication data to database: "+dbResponse.rows[0]);
             strava_oauth.accessToken = authData.data['access_token'];
             console.log("Authenticated successfully");
