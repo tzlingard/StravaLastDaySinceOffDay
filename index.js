@@ -123,10 +123,7 @@ app.post('/webhook', async (req, res) => {
         if (objectType === 'activity' && aspectType === 'create') {  
             console.log("Activity created, querying database for authData...");
             client = new Client({
-                host: process.env.PGHOST,
-                port: process.env.PGPORT,
-                user: process.env.PGUSER,
-                password: process.env.PGPASSWORD
+                connectionString: process.env.PGCONNECTIONSTRING
             });
             client.connect();
             client.query('SELECT * FROM user_data WHERE athleteId=$1', [ownerId], async (err, data) => {
