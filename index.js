@@ -200,6 +200,7 @@ app.get('/webhook', async (req, res) => {
 app.get('/callback', async (req, res) => {
     console.log("Exchange token request received!", req.query, req.body);
     let code = req.query['code'];
+    var authData;
     if (code) {
         let payload = {
             "client_id":process.env.CLIENT_ID,
@@ -208,25 +209,27 @@ app.get('/callback', async (req, res) => {
             "grant_type":"authorization_code"
         };
         try {
-            let response = await axios.post('https://www.strava.com/api/v3/oauth/token', payload);
+            authData = await axios.post('https://www.strava.com/api/v3/oauth/token', payload);
+        }
+        catch (error) {
+            console.log("Error exchanging authentication tokens", error);
+            res.status(400).send("Failed to authenticate with Strava.");
+        }
+        try {
             // add the authData to the database, or update the existing document with the new authData
             client = new Client({
-                host: process.env.PGHOST,
-                port: process.env.PGPORT,
-                user: process.env.PGUSER,
-                password: process.env.PGPASSWORD
+                connectionString: 'postgres://stravarunstreakauthdb_user:uNiPBMRLFYYYEEnUwgzIEpRXuAn5L1HI@dpg-cerp9h5a4991p151drcg-a/stravarunstreakauthdb'
             });
             client.connect();
-            client.query('INSERT INTO user_data(athleteId, accessToken, refreshToken, expiresAt) VALUES($1, $2, $3, $4) ON CONFLICT(athleteId) DO UPDATE'
-            [response.data['athlete']['id'], response.data['access_token'], response.data['refresh_token'], response.data['expires_at']]).then(res => {
+            client.query('INSERT INTO user_data(athleteId, accessToken, refreshToken, expiresAt) VALUES($1, $2, $3, $4) ON CONFLICT(athleteId) DO UPDATE;'
+            [authData.data['athlete']['id'], authData.data['access_token'], authData.data['refresh_token'], authData.data['expires_at']]).then(res => {
                 console.log("Added auth info into SQL database: " + res.rows[0]);
             });
-            strava_oauth.accessToken = response.data['access_token'];
+            strava_oauth.accessToken = authData.data['access_token'];
             console.log("Authenticated successfully");
             client.end();
         } catch (error) {
-            console.log("Error exchanging authentication tokens", error);
-            res.status(400).send("Failed to authenticate with Strava.");
+            console.log("Error storing authentication data in database", error);
         } finally {
             payload = {
                 "client_id":process.env.CLIENT_ID,
