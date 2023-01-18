@@ -72,10 +72,8 @@ async function addConsecutiveDaysMessage(objectId) {
 }
   
 function getConsecutiveRuns(activities) {
-    console.log(activities.length + " activities found.");
     const runs = activities.filter(getRuns);
     // Activities are sorted by start date, with the most recent first
-    console.log(runs.length + " runs found.");
     var lastDayWithoutRun = null;
     const mostRecentRunDate = runs[0]["start_date_local"];
     mostRecentRunDate.setHours(0,0,0,0);
@@ -90,6 +88,7 @@ function getConsecutiveRuns(activities) {
         dayBeforeNextRun.setHours(0,0,0,0);
         // if the day before the most recent activity is more recent than the current (earlier) activity day
         // ie. if the activity is more than a day before the next activity
+        console.log("runDate.getTime() = "+runDate.getTime() +", dayBeforeNextRun.getTime() = "+dayBeforeNextRun.getTime());
         if (runDate.getTime() < dayBeforeNextRun.getTime()) {
             lastDayWithoutRun = dayBeforeNextRun;
             var timeSinceLastOffDay = mostRecentRunDateTime - lastDayWithoutRun.getTime();
