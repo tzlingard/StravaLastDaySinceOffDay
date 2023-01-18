@@ -24,7 +24,7 @@ async function addConsecutiveDaysMessage(objectId) {
         if (error) {
           console.error("Failed to get logged in athlete activites.", error);
         } else {
-          console.log('getLoggedInAthleteActivities called successfully with format: ' + JSON.stringify(data[0]));
+          console.log('getLoggedInAthleteActivities called successfully.');
           var runStreakDescription = "Run Streak: ";
           var consecutiveRuns = getConsecutiveRuns(data);
           if (consecutiveRuns == null) {
@@ -72,8 +72,10 @@ async function addConsecutiveDaysMessage(objectId) {
 }
   
 function getConsecutiveRuns(activities) {
+    console.log(activities.length + " activities found.");
     const runs = activities.filter(getRuns);
     // Activities are sorted by start date, with the most recent first
+    console.log(runs.length + " runs found.");
     var lastDayWithoutRun = null;
     const mostRecentRunDate = runs[0]["start_date_local"];
     mostRecentRunDate.setHours(0,0,0,0);
@@ -81,26 +83,26 @@ function getConsecutiveRuns(activities) {
 
     var nextRunDate = runs[0]["start_date_local"];
     for (let i=1; i<runs.length; i++) {
-    var runDate = runs[i]["start_date_local"];
-    runDate.setHours(0,0,0,0);
-    var dayBeforeNextRun = nextRunDate;
-    dayBeforeNextRun.setDate(nextRunDate.getDate()-1);
-    dayBeforeNextRun.setHours(0,0,0,0);
-    // if the day before the most recent activity is more recent than the current (earlier) activity day
-    // ie. if the activity is more than a day before the next activity
-    if (runDate.getTime() < dayBeforeNextRun.getTime()) {
-        lastDayWithoutRun = dayBeforeNextRun;
-        var timeSinceLastOffDay = mostRecentRunDateTime - lastDayWithoutRun.getTime();
-        return timeSinceLastOffDay / (1000 * 3600 * 24); // number of days since last off day
-    } else {
-        nextRunDate = runDate;
-    }
+        var runDate = runs[i]["start_date_local"];
+        runDate.setHours(0,0,0,0);
+        var dayBeforeNextRun = nextRunDate;
+        dayBeforeNextRun.setDate(nextRunDate.getDate()-1);
+        dayBeforeNextRun.setHours(0,0,0,0);
+        // if the day before the most recent activity is more recent than the current (earlier) activity day
+        // ie. if the activity is more than a day before the next activity
+        if (runDate.getTime() < dayBeforeNextRun.getTime()) {
+            lastDayWithoutRun = dayBeforeNextRun;
+            var timeSinceLastOffDay = mostRecentRunDateTime - lastDayWithoutRun.getTime();
+            return timeSinceLastOffDay / (1000 * 3600 * 24); // number of days since last off day
+        } else {
+            nextRunDate = runDate;
+        }
     }
     return null;
 }
 
 function getRuns(activity) {
-    return activity["type"] == "Run" || activity["type"] == "TrailRun" || activity["type"] == "VirtualRun";
+    return activity["type"] === "Run" || activity["type"] === "TrailRun" || activity["type"] === "VirtualRun";
 }
 
 // Sets server port and logs message on success
