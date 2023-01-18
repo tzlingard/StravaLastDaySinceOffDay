@@ -24,7 +24,7 @@ async function addConsecutiveDaysMessage(objectId) {
         if (error) {
           console.error("Failed to get logged in athlete activites.", error);
         } else {
-          console.log('getLoggedInAthleteActivities called successfully: '+data);
+          console.log('getLoggedInAthleteActivities called successfully with format: ' + JSON.stringify(data[0]));
           var runStreakDescription = "Run Streak: ";
           var consecutiveRuns = getConsecutiveRuns(data);
           if (consecutiveRuns == null) {
