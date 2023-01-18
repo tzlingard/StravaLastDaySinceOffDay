@@ -24,11 +24,11 @@ async function addConsecutiveDaysMessage(objectId) {
         if (error) {
           console.error("Failed to get logged in athlete activites.", error);
         } else {
-          console.log('getLoggedInAthleteActivities called successfully.');
-          var runStreakDescription = "Run Streak:\n";
+          console.log('getLoggedInAthleteActivities called successfully: '+data);
+          var runStreakDescription = "Run Streak: ";
           var consecutiveRuns = getConsecutiveRuns(data);
           if (consecutiveRuns == null) {
-            runStreakDescription += "No off days found recently. Consider taking a day to rest and recover!";
+            runStreakDescription += "No off days found!";
           } else {
             if (consecutiveRuns < 5) {
                 runStreakDescription += "    -- " + consecutiveRuns + " --";
@@ -127,7 +127,6 @@ app.post('/webhook', async (req, res) => {
             await client.connect();
             try {
                 const data = await client.query('SELECT * FROM user_data WHERE athleteId=$1', [ownerId]);
-                console.log("authData found: "+JSON.stringify(data));
                 if (data && data.rowCount) {
                     // Date.now() gives milliseconds since epoch, strava API gives seconds since epoch
                     if (data.rows[0].expiresAt < (Date.now() / 1000)) {
