@@ -20,7 +20,7 @@ strava_oauth.accessToken = null;
 var activitiesApi = new StravaApiV3.ActivitiesApi(defaultClient);
 
 async function addConsecutiveDaysMessage(objectId) {
-    activitiesApi.getLoggedInAthleteActivities({}, function(error, data, response) {
+    activitiesApi.getLoggedInAthleteActivities({perPage: 100}, function(error, data) {
         if (error) {
           console.error("Failed to get logged in athlete activites.", error);
         } else {
@@ -41,7 +41,7 @@ async function addConsecutiveDaysMessage(objectId) {
             }
           }
           console.log(runStreakDescription);
-          activitiesApi.getActivityById(objectId, {'includeAllEfforts': true}, function(error, data, response) {
+          activitiesApi.getActivityById(objectId, {'includeAllEfforts': true}, function(error, data) {
             if (error) {
                 console.error(error);
             } else {
@@ -58,7 +58,7 @@ async function addConsecutiveDaysMessage(objectId) {
                 var opts = {
                     'body': activityUpdate
                   }
-                activitiesApi.updateActivityById(objectId, opts, function(error, data, response) {
+                activitiesApi.updateActivityById(objectId, opts, function(error, data) {
                     if (error) {
                         console.error(error);
                     } else {
@@ -88,8 +88,9 @@ function getConsecutiveRuns(activities) {
         dayBeforeNextRun.setHours(0,0,0,0);
         // if the day before the most recent activity is more recent than the current (earlier) activity day
         // ie. if the activity is more than a day before the next activity
-        console.log("runDate.getTime() = "+runDate.getTime() +", dayBeforeNextRun.getTime() = "+dayBeforeNextRun.getTime());
+        console.log("days between runs = "+(runDate.getTime() - dayBeforeNextRun.getTime()) / (1000*3600*24));
         if (runDate.getTime() < dayBeforeNextRun.getTime()) {
+            console.log("Off day found!");
             lastDayWithoutRun = dayBeforeNextRun;
             var timeSinceLastOffDay = mostRecentRunDateTime - lastDayWithoutRun.getTime();
             return timeSinceLastOffDay / (1000 * 3600 * 24); // number of days since last off day
@@ -150,7 +151,7 @@ app.post('/webhook', async (req, res) => {
                     } else {
                         console.log("Already authenticated");
                     }
-                    activitiesApi.getActivityById(objectId, {'includeAllEfforts':false}, async function(error, data, response) {
+                    activitiesApi.getActivityById(objectId, {'includeAllEfforts':false}, async function(error, data) {
                         if (error) {
                             console.log(error);
                         } else {
