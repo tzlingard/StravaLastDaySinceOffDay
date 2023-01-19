@@ -5,7 +5,6 @@ const
   bodyParser = require('body-parser'),
   axios = require('axios'),
   StravaApiV3 = require('strava_api_v3'),
-  path = require('path'),
   { Client } = require('pg'),
   // creates express http server
   app = express().use(bodyParser.json());
@@ -88,7 +87,7 @@ function getConsecutiveRuns(activities) {
         dayBeforeNextRun.setHours(0,0,0,0);
         // if the day before the most recent activity is more recent than the current (earlier) activity day
         // ie. if the activity is more than a day before the next activity
-        console.log("days between runs = "+(runDate.getTime() - dayBeforeNextRun.getTime()) / (1000*3600*24));
+        console.log("current run name: " + runs[i]['name'] + " days between runs = "+(runDate.getTime() - dayBeforeNextRun.getTime()) / (1000*3600*24));
         if (runDate.getTime() < dayBeforeNextRun.getTime()) {
             console.log("Off day found!");
             lastDayWithoutRun = dayBeforeNextRun;
