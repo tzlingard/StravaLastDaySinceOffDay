@@ -30,7 +30,7 @@ async function addConsecutiveDaysMessage(objectId) {
             runStreakDescription += "No off days found!";
           } else {
             if (consecutiveRuns < 5) {
-                runStreakDescription += "    -- " + consecutiveRuns + " --";
+                runStreakDescription += consecutiveRuns;
             } else if (consecutiveRuns >= 5 && consecutiveRuns < 10) {
               runStreakDescription += "  🔥 " + consecutiveRuns + " 🔥";
             } else if (consecutiveRuns >= 10 && consecutiveRuns < 15) {
@@ -40,9 +40,9 @@ async function addConsecutiveDaysMessage(objectId) {
             }
           }
           console.log(runStreakDescription);
-          activitiesApi.getActivityById(objectId, {'includeAllEfforts': true}, function(error, data) {
+          activitiesApi.getActivityById(objectId, {'includeAllEfforts': false}, function(error, data) {
             if (error) {
-                console.error(error);
+                console.error("Failed to get activity "+ objectID + " by ID. " + error);
             } else {
                 var description = data.description ? data.description+"/n/n"+runStreakDescription : runStreakDescription;
                 var activityUpdate = {
@@ -87,7 +87,7 @@ function getConsecutiveRuns(activities) {
         dayBeforeNextRun.setHours(0,0,0,0);
         // if the day before the most recent activity is more recent than the current (earlier) activity day
         // ie. if the activity is more than a day before the next activity
-        console.log("current run name: " + runs[i]['name'] + " days between runs = "+(runDate.getTime() - dayBeforeNextRun.getTime()) / (1000*3600*24));
+        console.log("current run name: " + runs[i]['name'] + ", days between runs = "+(runDate.getTime() - dayBeforeNextRun.getTime()) / (1000*3600*24));
         if (runDate.getTime() < dayBeforeNextRun.getTime()) {
             console.log("Off day found!");
             lastDayWithoutRun = dayBeforeNextRun;
@@ -121,56 +121,60 @@ app.post('/webhook', async (req, res) => {
     if (objectType && objectId && aspectType && ownerId) {
         // Only trigger update when creating an activity
         if (objectType === 'activity' && aspectType === 'create') {  
-            console.log("Activity created, querying database for authData...");
-            const client = new Client({
-                connectionString: process.env.PGCONNECTIONSTRING
-            });
-            await client.connect();
-            try {
-                const data = await client.query('SELECT * FROM user_data WHERE athleteId=$1', [ownerId]);
-                if (data && data.rowCount) {
-                    // Date.now() gives milliseconds since epoch, strava API gives seconds since epoch
-                    if (data.rows[0].expiresAt < (Date.now() / 1000)) {
-                        console.log("Access token expired, refreshing. expiresAt = " + data.rows[0].expiresAt + " , Date.now() = "+Date.now());
-                        let payload = {
-                            "client_id":process.env.CLIENT_ID,
-                            "client_secret":process.env.CLIENT_SECRET,
-                            "refresh_token":data.rows[0].refreshToken,
-                            "grant_type":"refresh_token"
-                        };
-                        let response = await axios.post('https://www.strava.com/api/v3/oauth/token', payload);
-                        try {
-                            await client.query('UPDATE user_data SET accessToken = $1, refreshToken = $2, expiresAt = $3 WHERE athleteId=$1 RETURNING *', 
-                            [response.data['access_token'], response.data['refresh_token'], response.data['expires_at'], ownerId]);
-                            strava_oauth.accessToken = response.data['access_token'];
-                            console.log("Updated authentication data");
-                        } catch (err) {
-                            console.log("Error updating authentication data: "+err);
-                        }
-                    } else {
-                        console.log("Already authenticated");
-                    }
-                    activitiesApi.getActivityById(objectId, {'includeAllEfforts':false}, async function(error, data) {
-                        if (error) {
-                            console.log(error);
-                        } else {
-                            if (data['type'] == 'Run' || data['type'] == 'TrailRun' || data['type'] == 'VirtualRun') {
-                                console.log('RUNNING RUN STREAK SCRIPT');
-                                await addConsecutiveDaysMessage(objectId);
-                            } else {
-                                console.log("Not a run, Run Streak script not triggered.");
-                            }
-                        }
-                    });
-                } else {
-                    console.log("No authentication data found for athlete with ID "+ownerId);
-                }
-                } catch(err) {
-                    console.log("Error querying authData: "+err);
-                }
+                handleActivityCreate(objectId, ownerId);
             }
         }
     });
+
+async function handleActivityCreate(objectId, ownerId) {
+    console.log("Activity created, querying database for authData...");
+    const client = new Client({
+        connectionString: process.env.PGCONNECTIONSTRING
+    });
+    await client.connect();
+    try {
+        const data = await client.query('SELECT * FROM user_data WHERE athleteId=$1', [ownerId]);
+        if (data && data.rowCount) {
+            // Date.now() gives milliseconds since epoch, strava API gives seconds since epoch
+            if (data.rows[0].expiresAt < (Date.now() / 1000)) {
+                console.log("Access token expired, refreshing. expiresAt = " + data.rows[0].expiresAt + " , Date.now() = "+Date.now());
+                let payload = {
+                    "client_id":process.env.CLIENT_ID,
+                    "client_secret":process.env.CLIENT_SECRET,
+                    "refresh_token":data.rows[0].refreshToken,
+                    "grant_type":"refresh_token"
+                };
+                let response = await axios.post('https://www.strava.com/api/v3/oauth/token', payload);
+                try {
+                    await client.query('UPDATE user_data SET accessToken = $1, refreshToken = $2, expiresAt = $3 WHERE athleteId=$1 RETURNING *', 
+                    [response.data['access_token'], response.data['refresh_token'], response.data['expires_at'], ownerId]);
+                    strava_oauth.accessToken = response.data['access_token'];
+                    console.log("Updated authentication data");
+                } catch (err) {
+                    console.log("Error updating authentication data: "+err);
+                }
+            } else {
+                console.log("Already authenticated");
+            }
+            activitiesApi.getActivityById(objectId, {'includeAllEfforts':false}, async function(error, data) {
+                if (error) {
+                    console.log(`Failed to get object ${objectId} by ID . ${error}`);
+                } else {
+                    if (data['type'] == 'Run' || data['type'] == 'TrailRun' || data['type'] == 'VirtualRun') {
+                        console.log('RUNNING RUN STREAK SCRIPT');
+                        await addConsecutiveDaysMessage(objectId);
+                    } else {
+                        console.log("Not a run, Run Streak script not triggered.");
+                    }
+                }
+            });
+        } else {
+            console.log("No authentication data found for athlete with ID "+ownerId);
+        }
+    } catch(err) {
+        console.log("Error querying authData: "+err);
+    }
+}
 
 // Adds support for GET requests to our webhook
 app.get('/webhook', async (req, res) => {
