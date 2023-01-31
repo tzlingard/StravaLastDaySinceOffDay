@@ -135,7 +135,12 @@ async function handleActivityCreate(objectId, ownerId) {
     try {
         const data = await client.query('SELECT * FROM user_data WHERE athleteId=$1', [ownerId]);
         if (data && data.rowCount) {
-            // Date.now() gives milliseconds since epoch, strava API gives seconds since epoch
+                let payload = {
+                    "client_id":process.env.CLIENT_ID,
+                    "client_secret":process.env.CLIENT_SECRET,
+                    "refresh_token":data.rows[0].refreshToken,
+                    "grant_type":"refresh_token"
+                };
                 let response = await axios.post('https://www.strava.com/api/v3/oauth/token', payload);
                 try {
                     await client.query('UPDATE user_data SET accessToken = $1, refreshToken = $2, expiresAt = $3 WHERE athleteId=$1 RETURNING *', 
