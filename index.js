@@ -136,6 +136,7 @@ async function handleActivityCreate(objectId, ownerId) {
     try {
         const data = await client.query('SELECT * FROM user_data WHERE athleteId=$1', [ownerId]);
         if (data && data.rowCount) {
+            console.log("data found: "+JSON.stringify(data));
                 let payload = {
                     "client_id":process.env.CLIENT_ID,
                     "client_secret":process.env.CLIENT_SECRET,
