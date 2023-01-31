@@ -1,3 +1,4 @@
+const { json } = require('body-parser');
 
 // Imports dependencies and sets up http server
 const
@@ -141,6 +142,7 @@ async function handleActivityCreate(objectId, ownerId) {
                     "refresh_token":data.rows[0].refreshToken,
                     "grant_type":"refresh_token"
                 };
+                console.log("Attempting refresh token with payload: "+json.stringify(payload));
                 let response = await axios.post('https://www.strava.com/api/v3/oauth/token', payload);
                 try {
                     await client.query('UPDATE user_data SET accessToken = $1, refreshToken = $2, expiresAt = $3 WHERE athleteId=$1 RETURNING *', 
