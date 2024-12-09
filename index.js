@@ -140,7 +140,7 @@ async function handleActivityCreate(objectId, ownerId) {
             let payload = {
                 "client_id":process.env.CLIENT_ID,
                 "client_secret":process.env.CLIENT_SECRET,
-                "refresh_token":data.rows[0].refreshToken,
+                "refresh_token":data.rows[0].refreshtoken,
                 "grant_type":"refresh_token"
             };
             if (data.rows[0].expires_at < Math.floor(Date.now() / 1000)) {
@@ -156,8 +156,8 @@ async function handleActivityCreate(objectId, ownerId) {
                 }
             }
             else {
-                console.log("Refresh token not needed, setting accessToken to " + data.rows[0].accessToken);
-                strava_oauth.accessToken = data.rows[0].accessToken;
+                console.log("Refresh token not needed, setting accessToken to " + data.rows[0].accesstoken);
+                strava_oauth.accessToken = data.rows[0].accesstoken;
             }
             activitiesApi = new StravaApiV3.ActivitiesApi();
             activitiesApi.getActivityById(objectId, {'includeAllEfforts':false}, async function(error, data) {
