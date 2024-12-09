@@ -143,7 +143,7 @@ async function handleActivityCreate(objectId, ownerId) {
                 "refresh_token":data.rows[0].refreshtoken,
                 "grant_type":"refresh_token"
             };
-            if (data.rows[0].expires_at < Math.floor(Date.now() / 1000)) {
+            if (data.rows[0].expiresat < Math.floor(Date.now() / 1000)) {
                 console.log("Attempting refresh token with payload: "+ JSON.stringify(payload));
                 let response = await axios.post('https://www.strava.com/api/v3/oauth/token', payload);
                 try {
