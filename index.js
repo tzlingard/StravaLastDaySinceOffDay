@@ -155,6 +155,10 @@ async function handleActivityCreate(objectId, ownerId) {
                         console.log("Error updating authentication data: "+err);
                     }
                 }
+                else {
+                    console.log("Refresh token not needed");
+                    strava_oauth.accessToken = data.rows[0].accessToken;
+                }
             activitiesApi.getActivityById(objectId, {'includeAllEfforts':false}, async function(error, data) {
                 if (error) {
                     console.log(`Failed to get object ${objectId} by ID . ${error}`);
