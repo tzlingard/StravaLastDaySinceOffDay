@@ -17,7 +17,7 @@ var defaultClient = StravaApiV3.ApiClient.instance;
 var strava_oauth = defaultClient.authentications['strava_oauth'];
 strava_oauth.accessToken = null;
 
-var activitiesApi = new StravaApiV3.ActivitiesApi(defaultClient);
+var activitiesApi = new StravaApiV3.ActivitiesApi();
 
 async function addConsecutiveDaysMessage(objectId) {
     activitiesApi.getLoggedInAthleteActivities({perPage: 100}, function(error, data) {
