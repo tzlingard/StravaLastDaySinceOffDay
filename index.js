@@ -129,11 +129,11 @@ app.post('/webhook', async (req, res) => {
 
 async function handleActivityCreate(objectId, ownerId) {
     console.log("Activity created, querying database for authData...");
-    const client = new Client({
-        connectionString: process.env.PGCONNECTIONSTRING
-    });
-    await client.connect();
     try {
+        const client = new Client({
+            connectionString: process.env.PGCONNECTIONSTRING
+        });
+        await client.connect();
         const data = await client.query('SELECT * FROM user_data WHERE athleteId=$1', [ownerId]);
         if (data && data.rowCount) {
             console.log("data found: "+JSON.stringify(data));
@@ -143,15 +143,17 @@ async function handleActivityCreate(objectId, ownerId) {
                     "refresh_token":data.rows[0].refreshToken,
                     "grant_type":"refresh_token"
                 };
-                console.log("Attempting refresh token with payload: "+ JSON.stringify(payload));
-                let response = await axios.post('https://www.strava.com/api/v3/oauth/token', payload);
-                try {
-                    await client.query('UPDATE user_data SET accessToken = $1, refreshToken = $2, expiresAt = $3 WHERE athleteId=$1 RETURNING *', 
-                    [response.data['access_token'], response.data['refresh_token'], response.data['expires_at'], ownerId]);
-                    strava_oauth.accessToken = response.data['access_token'];
-                    console.log("Updated authentication data");
-                } catch (err) {
-                    console.log("Error updating authentication data: "+err);
+                if (data.rows[0].expires_at < Math.floor(Date.now() / 1000)) {
+                    console.log("Attempting refresh token with payload: "+ JSON.stringify(payload));
+                    let response = await axios.post('https://www.strava.com/api/v3/oauth/token', payload);
+                    try {
+                        await client.query('UPDATE user_data SET accessToken = $1, refreshToken = $2, expiresAt = $3 WHERE athleteId=$1 RETURNING *', 
+                        [response.data['access_token'], response.data['refresh_token'], response.data['expires_at'], ownerId]);
+                        strava_oauth.accessToken = response.data['access_token'];
+                        console.log("Updated authentication data");
+                    } catch (err) {
+                        console.log("Error updating authentication data: "+err);
+                    }
                 }
             activitiesApi.getActivityById(objectId, {'includeAllEfforts':false}, async function(error, data) {
                 if (error) {
@@ -169,7 +171,7 @@ async function handleActivityCreate(objectId, ownerId) {
             console.log("No authentication data found for athlete with ID "+ownerId);
         }
     } catch(err) {
-        console.log("Error querying authData: "+err);
+        console.log("Error querying authData: " + err);
     }
 }
 
