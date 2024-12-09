@@ -147,7 +147,7 @@ async function handleActivityCreate(objectId, ownerId) {
                 console.log("Attempting refresh token with payload: "+ JSON.stringify(payload));
                 let response = await axios.post('https://www.strava.com/api/v3/oauth/token', payload);
                 try {
-                    await client.query('UPDATE user_data SET accessToken = $1, refreshToken = $2, expiresAt = $3 WHERE athleteId=$1 RETURNING *', 
+                    await client.query('UPDATE user_data SET accessToken = $1, refreshToken = $2, expiresAt = $3 WHERE athleteId=$4 RETURNING *', 
                     [response.data['access_token'], response.data['refresh_token'], response.data['expires_at'], ownerId]);
                     strava_oauth.accessToken = response.data['access_token'];
                     console.log("Updated authentication data");
