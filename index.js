@@ -17,7 +17,7 @@ var defaultClient = StravaApiV3.ApiClient.instance;
 var strava_oauth = defaultClient.authentications['strava_oauth'];
 strava_oauth.accessToken = null;
 
-var activitiesApi = new StravaApiV3.ActivitiesApi();
+var activitiesApi = null;
 
 async function addConsecutiveDaysMessage(objectId) {
     activitiesApi.getLoggedInAthleteActivities({perPage: 100}, function(error, data) {
@@ -137,28 +137,29 @@ async function handleActivityCreate(objectId, ownerId) {
         const data = await client.query('SELECT * FROM user_data WHERE athleteId=$1', [ownerId]);
         if (data && data.rowCount) {
             console.log("data found: "+JSON.stringify(data));
-                let payload = {
-                    "client_id":process.env.CLIENT_ID,
-                    "client_secret":process.env.CLIENT_SECRET,
-                    "refresh_token":data.rows[0].refreshToken,
-                    "grant_type":"refresh_token"
-                };
-                if (data.rows[0].expires_at < Math.floor(Date.now() / 1000)) {
-                    console.log("Attempting refresh token with payload: "+ JSON.stringify(payload));
-                    let response = await axios.post('https://www.strava.com/api/v3/oauth/token', payload);
-                    try {
-                        await client.query('UPDATE user_data SET accessToken = $1, refreshToken = $2, expiresAt = $3 WHERE athleteId=$1 RETURNING *', 
-                        [response.data['access_token'], response.data['refresh_token'], response.data['expires_at'], ownerId]);
-                        strava_oauth.accessToken = response.data['access_token'];
-                        console.log("Updated authentication data");
-                    } catch (err) {
-                        console.log("Error updating authentication data: "+err);
-                    }
+            let payload = {
+                "client_id":process.env.CLIENT_ID,
+                "client_secret":process.env.CLIENT_SECRET,
+                "refresh_token":data.rows[0].refreshToken,
+                "grant_type":"refresh_token"
+            };
+            if (data.rows[0].expires_at < Math.floor(Date.now() / 1000)) {
+                console.log("Attempting refresh token with payload: "+ JSON.stringify(payload));
+                let response = await axios.post('https://www.strava.com/api/v3/oauth/token', payload);
+                try {
+                    await client.query('UPDATE user_data SET accessToken = $1, refreshToken = $2, expiresAt = $3 WHERE athleteId=$1 RETURNING *', 
+                    [response.data['access_token'], response.data['refresh_token'], response.data['expires_at'], ownerId]);
+                    strava_oauth.accessToken = response.data['access_token'];
+                    console.log("Updated authentication data");
+                } catch (err) {
+                    console.log("Error updating authentication data: "+err);
                 }
-                else {
-                    console.log("Refresh token not needed");
-                    strava_oauth.accessToken = data.rows[0].accessToken;
-                }
+            }
+            else {
+                console.log("Refresh token not needed, setting accessToken to " + data.rows[0].accessToken);
+                strava_oauth.accessToken = data.rows[0].accessToken;
+            }
+            activitiesApi = new StravaApiV3.ActivitiesApi();
             activitiesApi.getActivityById(objectId, {'includeAllEfforts':false}, async function(error, data) {
                 if (error) {
                     console.log(`Failed to get object ${objectId} by ID . ${error}`);
