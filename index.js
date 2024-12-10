@@ -1,5 +1,3 @@
-const { json } = require('body-parser');
-
 // Imports dependencies and sets up http server
 const
   express = require('express'),
@@ -80,17 +78,15 @@ function getConsecutiveRuns(activities) {
     const mostRecentRunDateTime = runs[0]["start_date_local"].getTime();
 
     var nextRunDate = runs[0]["start_date_local"];
-    for (let i=1; i<runs.length; i++) {
+    for (let i = 1; i < runs.length; i++) {
         var runDate = runs[i]["start_date_local"];
         runDate.setHours(0,0,0,0);
         var dayBeforeNextRun = nextRunDate;
-        dayBeforeNextRun.setDate(nextRunDate.getDate()-1);
+        dayBeforeNextRun.setDate(nextRunDate.getDate() - 1);
         dayBeforeNextRun.setHours(0,0,0,0);
         // if the day before the most recent activity is more recent than the current (earlier) activity day
         // ie. if the activity is more than a day before the next activity
-        console.log("current run name: " + runs[i]['name'] + ", days between runs = "+(runDate.getTime() - dayBeforeNextRun.getTime()) / (1000*3600*24));
         if (runDate.getTime() < dayBeforeNextRun.getTime()) {
-            console.log("Off day found!");
             lastDayWithoutRun = dayBeforeNextRun;
             var timeSinceLastOffDay = mostRecentRunDateTime - lastDayWithoutRun.getTime();
             return timeSinceLastOffDay / (1000 * 3600 * 24); // number of days since last off day
@@ -136,7 +132,7 @@ async function handleActivityCreate(objectId, ownerId) {
         await client.connect();
         const data = await client.query('SELECT * FROM user_data WHERE athleteId=$1', [ownerId]);
         if (data && data.rowCount) {
-            console.log("data found: "+JSON.stringify(data));
+            console.log("data found in authorization DB for athlete with ID " + data.rows[0].athleteid);
             let payload = {
                 "client_id":process.env.CLIENT_ID,
                 "client_secret":process.env.CLIENT_SECRET,
