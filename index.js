@@ -25,7 +25,7 @@ async function addConsecutiveDaysMessage(objectId) {
           console.error("Failed to get logged in athlete activites.", error);
         } else {
           console.log('getLoggedInAthleteActivities called successfully.');
-          var runStreakDescription = "Run Streak: ";
+          var runStreakDescription = "\n --\nRun Streak: ";
           var consecutiveRuns = getConsecutiveRuns(data);
           if (consecutiveRuns == null) {
             runStreakDescription += "No off days found!";
@@ -36,7 +36,7 @@ async function addConsecutiveDaysMessage(objectId) {
               runStreakDescription += "  🔥 " + consecutiveRuns + " 🔥";
             } else if (consecutiveRuns >= 10 && consecutiveRuns < 15) {
               runStreakDescription += "🔥🔥 " + consecutiveRuns + " 🔥🔥";
-            } else if (consecutiveRuns >=15) {
+            } else if (consecutiveRuns >= 15) {
               runStreakDescription += "🔥🥵 " + consecutiveRuns + " 🥵🔥";
             }
           }
