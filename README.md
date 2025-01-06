@@ -1,4 +1,4 @@
-# StravaRunStreak
+# Run Streak for Strava
 https://stravarunstreak.onrender.com/
 
 ![logo192](https://user-images.githubusercontent.com/63806844/210122939-7eae035c-26e9-455d-8585-f1020b2e62e4.png)
